@@ -32,6 +32,15 @@
 #include <media/v4l2-int-device.h>
 #include "mxc_v4l2_capture.h"
 
+#ifdef pr_debug
+#undef pr_debug
+#define pr_debug(fmt, ...) \
+	printk(KERN_ERR pr_fmt(fmt), ##__VA_ARGS__)
+#else
+#define pr_debug(fmt, ...) \
+	printk(KERN_ERR pr_fmt(fmt), ##__VA_ARGS__)
+#endif
+
 static struct regulator *dvddio_regulator;
 static struct regulator *dvdd_regulator;
 static struct regulator *avdd_regulator;
