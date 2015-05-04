@@ -31,6 +31,7 @@
 #include <media/v4l2-chip-ident.h>
 #include <media/v4l2-int-device.h>
 #include "mxc_v4l2_capture.h"
+#include <linux/platform_device.h>
 
 #ifdef pr_debug
 #undef pr_debug
@@ -1228,6 +1229,111 @@ static int adv7282_detach(struct i2c_client *client)
 	return 0;
 }
 
+static int adv7282_platform_probe(struct platform_device *pdev)
+{
+	int rev_id;
+	int ret = 0;
+	tvin_plat = pdev->dev.platform_data;
+
+	//printk(KERN_ERR"DBG sensor data is at %p\n", &adv7282_data);
+
+	pr_debug("In adv7282_platform_probe\n");
+
+	if (tvin_plat->dvddio_reg) {
+		dvddio_regulator =
+		    regulator_get(&pdev->dev, tvin_plat->dvddio_reg);
+		if (!IS_ERR_VALUE((unsigned long)dvddio_regulator)) {
+			regulator_set_voltage(dvddio_regulator, 3300000, 3300000);
+			if (regulator_enable(dvddio_regulator) != 0)
+				return -ENODEV;
+		}
+	}
+
+	if (tvin_plat->dvdd_reg) {
+		dvdd_regulator =
+		    regulator_get(&pdev->dev, tvin_plat->dvdd_reg);
+		if (!IS_ERR_VALUE((unsigned long)dvdd_regulator)) {
+			regulator_set_voltage(dvdd_regulator, 1800000, 1800000);
+			if (regulator_enable(dvdd_regulator) != 0)
+				return -ENODEV;
+		}
+	}
+
+	if (tvin_plat->avdd_reg) {
+		avdd_regulator =
+		    regulator_get(&pdev->dev, tvin_plat->avdd_reg);
+		if (!IS_ERR_VALUE((unsigned long)avdd_regulator)) {
+			regulator_set_voltage(avdd_regulator, 1800000, 1800000);
+			if (regulator_enable(avdd_regulator) != 0)
+				return -ENODEV;
+		}
+	}
+
+	if (tvin_plat->pvdd_reg) {
+		pvdd_regulator =
+		    regulator_get(&pdev->dev, tvin_plat->pvdd_reg);
+		if (!IS_ERR_VALUE((unsigned long)pvdd_regulator)) {
+			regulator_set_voltage(pvdd_regulator, 1800000, 1800000);
+			if (regulator_enable(pvdd_regulator) != 0)
+				return -ENODEV;
+		}
+	}
+
+	if (tvin_plat->io_init)
+		tvin_plat->io_init();
+
+	if (tvin_plat->reset)
+		tvin_plat->reset();
+
+	if (tvin_plat->pwdn)
+		tvin_plat->pwdn(0);
+
+	msleep(1);
+
+	/* Set initial values for the sensor struct. */
+	memset(&adv7282_data, 0, sizeof(adv7282_data));
+	adv7282_data.sen.i2c_client = pdev;
+	adv7282_data.sen.streamcap.timeperframe.denominator = 30;
+	adv7282_data.sen.streamcap.timeperframe.numerator = 1;
+	adv7282_data.std_id = V4L2_STD_ALL;
+	video_idx = ADV7282_NOT_LOCKED;
+	adv7282_data.sen.pix.width = video_fmts[video_idx].raw_width;
+	adv7282_data.sen.pix.height = video_fmts[video_idx].raw_height;
+	adv7282_data.sen.pix.pixelformat = V4L2_PIX_FMT_UYVY;  /* YUV422 */
+	adv7282_data.sen.pix.priv = 1;  /* 1 is used to indicate TV in */
+	adv7282_data.sen.on = true;
+
+	gpio_sensor_active();
+
+	/*! Read the revision ID of the tvin chip */
+	rev_id = adv7282_read(ADV7282_IDENT);
+
+	/*! ADV7282 initialization. */
+	adv7282_hard_reset(tvin_plat->cvbs);
+
+	pr_debug("   type is %d (expect %d)\n",
+		 adv7282_int_device.type, v4l2_int_type_slave);
+	pr_debug("   num ioctls is %d\n",
+		 adv7282_int_device.u.slave->num_ioctls);
+
+	/* This function attaches this structure to the /dev/video0 device.
+	 * The pointer in priv points to the mt9v111_data structure here.*/
+	adv7282_int_device.priv = &adv7282_data;
+	ret = v4l2_int_device_register(&adv7282_int_device);
+
+	return ret;
+
+}
+
+static struct platform_driver adv7282_device_driver = {
+	.probe		= adv7282_platform_probe,
+	//.remove		= __devexit_p(gpio_keys_remove),
+	.driver		= {
+		.name	= "adv7282",
+		.owner	= THIS_MODULE,
+	}
+};
+
 /*!
  * ADV7282 init function.
  * Called on insmod.
@@ -1236,17 +1342,18 @@ static int adv7282_detach(struct i2c_client *client)
  */
 static __init int adv7282_init(void)
 {
-	u8 err = 0;
+//	u8 err = 0;
 
-	pr_debug("In adv7282_init\n");
+//	pr_debug("In adv7282_init\n");
 
 	/* Tells the i2c driver what functions to call for this driver. */
-	err = i2c_add_driver(&adv7282_i2c_driver);
-	if (err != 0)
-		pr_err("%s:driver registration failed, error=%d \n",
-			__func__, err);
+//	err = i2c_add_driver(&adv7282_i2c_driver);
+//	if (err != 0)
+//		pr_err("%s:driver registration failed, error=%d \n",
+//			__func__, err);
 
-	return err;
+//	return err;
+        return platform_driver_register(&adv7282_device_driver);
 }
 
 /*!
