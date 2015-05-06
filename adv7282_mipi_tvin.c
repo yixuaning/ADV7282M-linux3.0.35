@@ -33,6 +33,7 @@
 #include "mxc_v4l2_capture.h"
 #include <linux/platform_device.h>
 
+#define YIXUAN_DEBUG 1
 #ifdef pr_debug
 #undef pr_debug
 #define pr_debug(fmt, ...) \
@@ -329,6 +330,8 @@ static int ioctl_s_power(struct v4l2_int_device *s, int on)
 {
 	struct sensor *sensor = s->priv;
 
+pr_debug("yixuan-%s:%d\n", __FUNCTION__ , __LINE__);
+#ifndef YIXUAN_DEBUG
 	dev_dbg(&adv7282_data.sen.i2c_client->dev, "adv7282:ioctl_s_power\n");
 
 	if (on && !sensor->sen.on) {
@@ -346,6 +349,8 @@ static int ioctl_s_power(struct v4l2_int_device *s, int on)
 			return -EIO;
 		gpio_sensor_inactive();
 	}
+#endif
+pr_debug("yixuan-%s:%d\n", __FUNCTION__ , __LINE__);
 
 	sensor->sen.on = on;
 
@@ -438,9 +443,10 @@ static int ioctl_s_parm(struct v4l2_int_device *s, struct v4l2_streamparm *a)
 static int ioctl_g_fmt_cap(struct v4l2_int_device *s, struct v4l2_format *f)
 {
 	struct sensor *sensor = s->priv;
-
+pr_debug("yixuan-%s:%d\n", __FUNCTION__ , __LINE__);
+#ifndef YIXUAN_DEBUG
 	dev_dbg(&adv7282_data.sen.i2c_client->dev, "adv7282:ioctl_g_fmt_cap\n");
-
+#endif
 	switch (f->type) {
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
 		pr_debug("   Returning size of %dx%d\n",
@@ -1303,13 +1309,18 @@ static int adv7282_platform_probe(struct platform_device *pdev)
 	adv7282_data.sen.pix.priv = 1;  /* 1 is used to indicate TV in */
 	adv7282_data.sen.on = true;
 
-	gpio_sensor_active();
+	//gpio_sensor_active();
 
+#if 0
 	/*! Read the revision ID of the tvin chip */
 	rev_id = adv7282_read(ADV7282_IDENT);
+	dev_dbg(&adv7282_data.sen.i2c_client->dev,
+		"%s:Analog Device adv7%2X0 detected!\n", __func__,
+		rev_id);
+#endif
 
 	/*! ADV7282 initialization. */
-	adv7282_hard_reset(tvin_plat->cvbs);
+	//adv7282_hard_reset(tvin_plat->cvbs);
 
 	pr_debug("   type is %d (expect %d)\n",
 		 adv7282_int_device.type, v4l2_int_type_slave);
@@ -1319,7 +1330,9 @@ static int adv7282_platform_probe(struct platform_device *pdev)
 	/* This function attaches this structure to the /dev/video0 device.
 	 * The pointer in priv points to the mt9v111_data structure here.*/
 	adv7282_int_device.priv = &adv7282_data;
+pr_debug("yixuan-%s:%d\n", __FUNCTION__ , __LINE__);
 	ret = v4l2_int_device_register(&adv7282_int_device);
+pr_debug("yixuan-%s:%d\n", __FUNCTION__ , __LINE__);
 
 	return ret;
 

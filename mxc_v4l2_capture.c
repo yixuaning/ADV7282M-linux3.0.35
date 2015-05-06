@@ -44,6 +44,16 @@
 #define init_MUTEX(sem)         sema_init(sem, 1)
 #define MXC_SENSOR_NUM 2
 
+#define YIXUAN_DEBUG 1
+#ifdef pr_debug
+#undef pr_debug
+#define pr_debug(fmt, ...) \
+	printk(KERN_ERR pr_fmt(fmt), ##__VA_ARGS__)
+#else
+#define pr_debug(fmt, ...) \
+	printk(KERN_ERR pr_fmt(fmt), ##__VA_ARGS__)
+#endif
+
 static int video_nr = -1;
 
 /*! This data is used for the output to the display. */
@@ -2935,6 +2945,7 @@ static int mxc_v4l2_master_attach(struct v4l2_int_device *slave)
 	pr_debug("In MVC: mxc_v4l2_master_attach\n");
 	pr_debug("   slave.name = %s\n", slave->name);
 	pr_debug("   master.name = %s\n", slave->u.slave->master->name);
+pr_debug("yixuan-%s:%d\n", __FUNCTION__ , __LINE__);
 
 	if (slave == NULL) {
 		pr_err("ERROR: v4l2 capture: slave parameter not valid.\n");
@@ -2955,14 +2966,19 @@ static int mxc_v4l2_master_attach(struct v4l2_int_device *slave)
 		pr_err("ERROR: v4l2 capture: slave number exceeds the maximum.\n");
 		return -1;
 	}
-
+pr_debug("yixuan-%s:%d\n", __FUNCTION__ , __LINE__);
 	for (i = 0; i < cam->sensor_index; i++) {
 		vidioc_int_dev_exit(cam->all_sensors[i]);
 		vidioc_int_s_power(cam->all_sensors[i], 0);
 	}
 
+pr_debug("yixuan-%s:%d\n", __FUNCTION__ , __LINE__);
+
 	cam_fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
 	vidioc_int_g_fmt_cap(cam->sensor, &cam_fmt);
+
+pr_debug("yixuan-%s:%d\n", __FUNCTION__ , __LINE__);
 
 	/* Used to detect TV in (type 1) vs. camera (type 0)*/
 	cam->device_type = cam_fmt.fmt.pix.priv;
